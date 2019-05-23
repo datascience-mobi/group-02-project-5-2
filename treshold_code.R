@@ -25,5 +25,5 @@ tot_Unreliable
 
 x_axis <- seq(750000, 995000, by = 5000)
 plot( x=x_axis, y=tot_Unreliable, type= "l", main = "Unreliable Data by treshold", xlab= "Treshold position", ylab = "Unreliable Data")
-
+abline(v=880000, col="red") # Our upper treshold could very well be 880.000 !
 
