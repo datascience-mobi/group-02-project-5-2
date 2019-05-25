@@ -27,3 +27,17 @@ x_axis <- seq(750000, 995000, by = 5000)
 plot( x=x_axis, y=tot_Unreliable, type= "l", main = "Unreliable Data by threshold", xlab= "Threshold position", ylab = "Unreliable Data")
 abline(v=880000, col="red") # Our upper treshold could very well be 880.000 !
 
+# converting all the beta-Values which pairing coverage-values are unreliable into NAs
+
+data <- Genes[,c(11:46)]
+patients <- data
+
+for(j in 19:36){
+  for(i in 1:length(patients[,j])) {
+    if(patients[i,j]< "lower treshold" | patients[i,j]> "upper treshold"){
+      patients[i,j-18] <- NA
+    }
+  }
+}
+
+
