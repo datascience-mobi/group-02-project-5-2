@@ -3,12 +3,13 @@ annotation <- read.csv(file="sample_annotation.csv")
 
 #Split data in order to facilitate data cleanup
 promoters <- data$promoters;
-promoters_only <- promoters[,-c(1,2,3,4,5,6,7,8,9,10)]
+promoters_only <- promoters[,-c(1:10)]
 
 beta <- promoters_only[,c(1:18)]
 coverage<- promoters_only[,c(19:36)]
 
-########################### Quality Control ######################
+########################### QUALITY CONTROL - COVERAGE ######################
+
 # In order to check for quality in the data, we need to set thresholds for minimum and 
 # maximum coverage values. Too little coverage means unreliable beta values, whereas
 # too high coverage could be caused by PCR duplicates
@@ -26,21 +27,29 @@ abline(v=quantile(log_coverage_mean, probs = c(seq(0.1, 1.0, by= 0.1))), col="re
 abline(v=quantile(log_coverage_mean, probs = c(0.05, 0.95), col="cyan"), lty=2)
 # The green lines tells us that the 5% quantile is around cov=100 
 # and the 95% quantile aorund cov=5.500
+
 quantile(coverage_tot_mean, probs=.05)
+  #Result: 99.33333
 quantile(coverage_tot_mean, probs=.95)
-ecdf(coverage_histo)(c(10, 15, 20, 30))
+  #Result: 5620 
 
 # Chromosomes X & Y have to be removed from the analysis
 cover_nox <- coverage[-which(promoters$Chromosome == "chrX"), ]
 cover_noxy <- cover_nox[-which(promoters$Chromosome == "chrY"), ]
+rm(coverage, cover_nox)
 
 cover_tot_mean <- rowMeans(cover_noxy) 
 log_cover_mean <- log10(cover_tot_mean)
 
-hist(log_cover_mean, breaks = 250, xlim = c(0,5.5))
+par(mfrow=c(1,2))
+hist(log_coverage_mean, breaks = 200, xlim = c(0,5.5), main="With XY chr")
+abline(v=quantile(log_coverage_mean, probs = c(seq(0.1, 1.0, by= 0.1))), col="red")
+abline(v=quantile(log_coverage_mean, probs = c(0.05, 0.95), col="cyan"), lty=2)
+hist(log_cover_mean, breaks = 200, xlim = c(0,5.5), main = "WhithOUT XY chr")
 abline(v=quantile(log_cover_mean, probs = c(seq(0.1, 1.0, by= 0.1))), col="red")
 abline(v=quantile(log_cover_mean, probs = c(0.05, 0.95), col="cyan"), lty=2)
 #Looks fairly similar to the previous one 
+
 
 ################################  UPPER threshold  ########################################
 
@@ -63,10 +72,9 @@ for(i in 0:1145){
   N_Unreliable <- length(Unreliable)
   NAs_up <- append(NAs_up, N_Unreliable)
 }
-head(NAs_up, n=20)
-tail(thresholds_up, n=20)
+
 length(NAs_up)
-length(thresholds_up)
+length(thresholds_up) #Checking if both have the same length
 
 par(mfrow=c(1,1))
 plot(x=log10(thresholds_up), y=NAs_up, type= "l", main = "Unreliable Data by threshold", 
@@ -85,7 +93,7 @@ abline(v=quantile(coverage_tot_mean, probs = c(seq(0, 1.0, by= 0.1))), col="gree
 
 # Let's assume the 95% quantile as our upper threshold
 
-quantile(coverage_histo, probs=.95) # RESULTS = 5.888
+quantile(coverage_histo, probs=.95) # RESULT = 5.888
 
 ################################  LOWER threshold  ########################################
 
@@ -109,15 +117,13 @@ plot( x=thresholds_low, y=NAs_low, type= "l", main = "Unreliable Data by thresho
       xlab= "threshold position", ylab = "Unreliable Data")
 abline(v=quantile( coverage_histo, probs = c(.01, .02, .03, .04) ), 
        col=c("blue","red", "orange", "green") )
-ecdf(coverage_histo)(30)
-# Result: [1] 0.03768356 = 3.768%
 
 # Distribution doesn't show any "kink"; Literature recommends a minimum coverage of 30x
 # (Ziller, M. J., Hansen, K. D., Meissner, A., & Aryee, M. J. (2015). 
 # Coverage recommendations for methylation analysis by whole-genome bisulfite sequencing. 
 # Nature methods, 12(3), 230.)
 
-################################  BETA VALUES  ########################################
+################################  APPLYING THRESHOLDS TO BETA VALUES  ########################################
 # Now that we've decided where to set our coverage thresholds, every beta value whose
 # coverage is either too low or too high shall be converted to NA
 
