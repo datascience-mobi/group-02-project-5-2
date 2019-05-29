@@ -103,3 +103,63 @@ row_rem <- as.vector(row_rm)
 beta_qc2_can <- beta_qc2_can[-row_rem, ]
 
 View(beta_qc2_can)
+
+# New approach to deal with NAs
+promoters_qc <- promoters
+for(j in 19:36){
+  for(i in 1:nrow(promoters)) {
+    if(promoters_qc [i,j]  < lower_threshold | promoters_qc [i,j] > upper_threshold){
+      promoters_qc [i,j-18] <- NA
+    }
+  }
+}
+View(promoters_qc)
+
+beta_can <- promoters_qc[,c(1:9)]
+beta_con <- promoters_qc[,c(10:18)]
+
+NAs_can <- rowSums(is.na(beta_can))
+NAs_con <- rowSums(is.na(beta_con))
+
+Can <- cbind(beta_can, NAs_can)
+Con <- cbind(beta_con, NAs_con)
+
+Can_partly_cleaned <- Can[-which(rowSums(is.na(Can)) > 2), ]
+View(Can_partly_cleaned)
+Can_cleaned <- Can_partly_cleaned
+for (i in 1:nrow(Can_cleaned)) {
+  m <- rowMeans(Can_cleaned[i,], na.rm = T)
+  n <- Can_cleaned[i,10]
+  
+  if (n==1) {
+    for (j in 1:9){
+      if (is.na(Can_cleaned[i,j])){
+        Can_cleaned[i,j] <- rowMeans(Can_cleaned[i,], na.rm = T)
+      }
+    }
+  }
+}
+View(Can_cleaned)
+Can_withsd <- cbind(Can_cleaned,c(1:50995))
+View(Can_withsd)
+for (i in 1:nrow(Can_withsd)){
+  Can_withsd[i,11] <- sd(Can_cleaned[i,], na.rm = T)/3
+  
+}
+
+Can_cleaned2 <- Can_withsd
+
+for (i in 1:nrow(Can_cleaned2)){
+  n <- Can_cleaned2[i,10]
+  
+  if (n==2 && Can_cleaned2[i,11] < 0.15) {
+    for (j in 1:9){
+      if(is.na(Can_cleaned2[i,j])){
+        Can_cleaned2[i,j] <- rowMeans(Can_cleaned2[i,], na.rm = T)
+      }
+    }
+    
+  }
+}
+
+View(Can_cleaned2)
