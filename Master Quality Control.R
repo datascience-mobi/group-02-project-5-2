@@ -199,50 +199,15 @@ SEM2 <- function(x, na.rm=T) {
   sqrt(var(x)/length(x))
 }
 
+### Quality Control part 2
 
-#Cancer patients
-beta_can_with_NA <- cbind(beta_can, NAs_can)
-dim(beta_can_with_NA)
-beta_can_red <- beta_can[c(1:50),] # Use a reduced dataset to run preliminary coding test 
+data <- readRDS(file="AML_gran_list.RDS.gz")
+promoters <- data$promoters[,-c(1:10)]
+ 
+lower_threshold <- 30
+upper_threshold <- 5888
 
-
-# First remove all genes that have more than 2 NAs
-beta_qc_can <- beta_can_red
-beta_qc_can <- beta_qc_can[-which(rowSums(is.na(beta_qc_can)) > 2), ]
-View(beta_qc_can)
-
-SEM1_can <- apply(beta_can, 1, SEM1)
-View(SEM1_can)
-SEM2_can <- apply(beta_can, 1, SEM2)
-View(SEM2_can)
-
-summary(SEM1_can)
-summary(SEM2_can)
-
-beta_qc2_can <- beta_qc_can
-row_rm <- c()
-for (i in 1:nrow(beta_qc_can)) { #this loop should be applied to a dataset in which all genes with > 2 NAs have been removed
-  m <- rowMeans(beta_can_with_NA[i,], na.rm = T)
-  sd2 <- sd(beta_can_with_NA[i,], na.rm = T)/sqrt(3)
-  #SEM2(beta_can_with_NA[i,])
-  n <- beta_can_with_NA[i,10]
-  
-  if(n==2){
-    if(sd2 > 0.014){
-      append(row_rm, i)
-    } else {
-      beta_qc_can[i, is.na(beta_qc_can[i,])] <- m
-    }
-  } else { 
-    beta_qc_can[i, is.na(beta_qc_can[i,])] <- m
-  }
-}
-row_rem <- as.vector(row_rm)
-beta_qc2_can <- beta_qc2_can[-row_rem, ]
-
-View(beta_qc2_can)
-
-# New approach to deal with NAs
+# Setting unreliable data through previously calculated thresholds to NA
 promoters_qc <- promoters
 for(j in 19:36){
   for(i in 1:nrow(promoters)) {
@@ -252,12 +217,7 @@ for(j in 19:36){
   }
 }
 View(promoters_qc)
-
-
-
-
-#Code 2: QC_beta.R
-
+# Removing genes that have more than 2 NAs in individual cohorts
 beta_can <- promoters_qc[,c(1:9)]
 beta_con <- promoters_qc[,c(10:18)]
 
@@ -267,42 +227,51 @@ NAs_con <- rowSums(is.na(beta_con))
 Can <- cbind(beta_can, NAs_can)
 Con <- cbind(beta_con, NAs_con)
 
-Can_partly_cleaned <- Can[-which(rowSums(is.na(Can)) > 2), ]
-View(Can_partly_cleaned)
-Can_cleaned <- Can_partly_cleaned
-for (i in 1:nrow(Can_cleaned)) {
-  m <- rowMeans(Can_cleaned[i,], na.rm = T)
-  n <- Can_cleaned[i,10]
+beta <- cbind(Can,Con)
+beta_partly_cleaned <- beta[-which(beta[,10]> 2 |beta[,20] >2),]
+
+# Replacing NAs with the mean value of the cohort
+beta_cleaned <- beta_partly_cleaned
+for (i in 1:nrow(beta_cleaned)) {
+   n <- beta_cleaned[i,10]
   
-  if (n==1) {
+  if (n==1 | n==2) {
     for (j in 1:9){
-      if (is.na(Can_cleaned[i,j])){
-        Can_cleaned[i,j] <- rowMeans(Can_cleaned[i,], na.rm = T)
+      if (is.na(beta_cleaned[i,j])){
+        beta_cleaned[i,j] <- rowMeans(beta_cleaned[i,1:9], na.rm = T)
       }
     }
   }
 }
-View(Can_cleaned)
-Can_withsd <- cbind(Can_cleaned,c(1:50995))
-View(Can_withsd)
-for (i in 1:nrow(Can_withsd)){
-  Can_withsd[i,11] <- sd(Can_cleaned[i,], na.rm = T)/3
+beta_total_cleaned <- beta_cleaned
+for (i in 1:nrow(beta_total_cleaned)) {
+  n <- beta_total_cleaned[i,20]
   
-}
-
-Can_cleaned2 <- Can_withsd
-
-for (i in 1:nrow(Can_cleaned2)){
-  n <- Can_cleaned2[i,10]
-  
-  if (n==2 && Can_cleaned2[i,11] < 0.15) {
-    for (j in 1:9){
-      if(is.na(Can_cleaned2[i,j])){
-        Can_cleaned2[i,j] <- rowMeans(Can_cleaned2[i,], na.rm = T)
+  if (n==1 | n==2) {
+    for (j in 11:19){
+      if (is.na(beta_total_cleaned[i,j])){
+        beta_total_cleaned[i,j] <- rowMeans(beta_total_cleaned[i,11:19], na.rm = T)
       }
     }
+  }
+}
+beta_ <- beta_total_cleaned[,-c(10,20)]
+
+### Data Normalization 
+promotors_normalized <- beta_
+for (j in 1:18) {
+  for (i in 1:nrow(promotors_normalized)) {
+    promotors_normalized[[i,j]] <- log2(beta_[i,j] / (1-beta_[i,j]) )
     
   }
 }
+View(promotors_normalized)
 
-View(Can_cleaned2)
+
+
+
+
+
+
+    
+ 
