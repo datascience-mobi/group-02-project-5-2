@@ -78,14 +78,7 @@ for(i in 0:1145){
 length(NAs_up)
 length(thresholds_up) #Checking if both have the same length
 
-par(mfrow=c(1,1))
-plot(x=log10(thresholds_up), y=NAs_up, type= "l", main = "Unreliable Data by threshold", 
-     xlab= "Threshold position (log)", ylab = "Unreliable Data")
-abline(v=quantile(log_cover_histo, probs = c(seq(0.95, 1.0, by= 0.01))), col="red")
-abline(v=quantile(log_cover_histo, probs = 0.995), col="orange")
-abline(v=quantile(log_cover_histo, probs = c(seq(0, 1.0, by= 0.1))), col="green")
-
-#Plot is far too compressed on the left side. Let's try making the x axis log10 to stretch the right part
+# Let's try making the x axis log10 to stretch the right part
 
 par(mfrow=c(1,1))
 plot(x=log10(thresholds_up), y=NAs_up, type= "l", main = "Unreliable Data by threshold", xlab= "threshold position", ylab = "Unreliable Data")
@@ -145,69 +138,12 @@ View(promoters_qc)
 lower_threshold <- 30
 upper_threshold <- 5888
 
-promoters_qc <- promoters_only
-for(j in 19:36){
-  for(i in 1:nrow(promoters_only)) {
-    if(promoters_qc [i,j]  < lower_threshold | promoters_qc [i,j] > upper_threshold){
-      promoters_qc [i,j-18] <- NA
-    }
-  }
-}
 
-promoters_qc_beta <- promoters_qc[,c(1:18)]
-
-
-###### QUALITY CONTROL OF NAs
-# Let's try a similar approach as before and try to visualize the amount of NAs that there are
-# in the updated beta values data frame
-#     It would make sense to visualize the amount of NAs within each cohort
-
-beta_can <- promoters_qc_beta[,c(1:9)]
-beta_con <- promoters_qc_beta[,c(10:18)]
-
-NAs_can <- rowSums(is.na(beta_can))
-NAs_con <- rowSums(is.na(beta_con))
-NAs_both <- rowSums(is.na(promoters_qc_beta))
-
-NAs_all <- cbind(NAs_can, NAs_con, NAs_both)
-View(NAs_all)
-
-# We apply a similiar approach as with the coverage. We try a set of thresholds to our data
-# and visualize how big the loss of data would be. 
-
-#Cancer patients
-beta_can_with_NA <- cbind(beta_can, NAs_can)
-
-genes_left <- c()
-thresholds <- c()
-for(i in 0:5){
-  threshold <- i
-  thresholds <- append(thresholds, threshold)
-  NAs_left <- nrow( NAs_all[ -which (NAs_can > threshold | NAs_con > threshold), ] )
-  genes_left <- append(genes_left, NAs_left)
-}
-
-par(mfrow=c(1,1))
-plot(x=thresholds, y=genes_left)
-
-beta_all_with_NA <- cbind(beta_can, NAs_can, beta_con, NAs_con)
-
-SEM1 <- function(x) sqrt(var(x)/length(x))
-
-SEM2 <- function(x, na.rm=T) {
-  if (na.rm) x <- na.omit(x)
-  sqrt(var(x)/length(x))
-}
-
-### Quality Control part 2
-
-data <- readRDS(file="AML_gran_list.RDS.gz")
 promoters <- data$promoters[,-c(1:10)]
- 
-lower_threshold <- 30
-upper_threshold <- 5888
 
-# Setting unreliable data through previously calculated thresholds to NA
+
+# Setting unreliable data to NA
+
 promoters_qc <- promoters
 for(j in 19:36){
   for(i in 1:nrow(promoters)) {
@@ -216,7 +152,9 @@ for(j in 19:36){
     }
   }
 }
+
 View(promoters_qc)
+
 # Removing genes that have more than 2 NAs in individual cohorts
 beta_can <- promoters_qc[,c(1:9)]
 beta_con <- promoters_qc[,c(10:18)]
@@ -231,41 +169,50 @@ beta <- cbind(Can,Con)
 beta_partly_cleaned <- beta[-which(beta[,10]> 2 |beta[,20] >2),]
 
 # Replacing NAs with the mean value of the cohort
-beta_cleaned <- beta_partly_cleaned
-for (i in 1:nrow(beta_cleaned)) {
-   n <- beta_cleaned[i,10]
+
+for (i in 1:nrow(beta_partly_cleaned)) {
+  n <- beta_partly_cleaned[i,10]
   
   if (n==1 | n==2) {
     for (j in 1:9){
-      if (is.na(beta_cleaned[i,j])){
-        beta_cleaned[i,j] <- rowMeans(beta_cleaned[i,1:9], na.rm = T)
+      if (is.na(beta_partly_cleaned[i,j])){
+        beta_partly_cleaned[i,j] <- rowMeans(beta_partly_cleaned[i,1:9], na.rm = T)
       }
     }
   }
 }
-beta_total_cleaned <- beta_cleaned
-for (i in 1:nrow(beta_total_cleaned)) {
-  n <- beta_total_cleaned[i,20]
+
+beta_can_cleaned <- beta_partly_cleaned
+
+for (i in 1:nrow(beta_can_cleaned)) {
+  n <- beta_can_cleaned[i,20]
   
   if (n==1 | n==2) {
     for (j in 11:19){
-      if (is.na(beta_total_cleaned[i,j])){
-        beta_total_cleaned[i,j] <- rowMeans(beta_total_cleaned[i,11:19], na.rm = T)
+      if (is.na(beta_can_cleaned[i,j])){
+        beta_can_cleaned[i,j] <- rowMeans(beta_can_cleaned[i,11:19], na.rm = T)
       }
     }
   }
 }
-beta_ <- beta_total_cleaned[,-c(10,20)]
+beta_ <- beta_can_cleaned[,-c(10,20)]
 
 ### Data Normalization 
-promotors_normalized <- beta_
+
 for (j in 1:18) {
-  for (i in 1:nrow(promotors_normalized)) {
-    promotors_normalized[[i,j]] <- log2(beta_[i,j] / (1-beta_[i,j]) )
+  for (i in 1:nrow(beta_)) {
+    beta_[[i,j]] <- log2(beta_[i,j] / (1-beta_[i,j]) )
     
   }
 }
+
+promotors_normalized <- beta_
+
 View(promotors_normalized)
+
+
+
+
 
 
 
