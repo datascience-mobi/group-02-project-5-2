@@ -10,6 +10,11 @@ promoters_only <- promoters[,-c(1:10)]
 beta <- promoters_only[,c(1:18)]
 coverage<- promoters_only[,c(19:36)]
 
+PatientInfo <- annotation[,c(3,4,11,29)]
+rownames(PatientInfo) <- c(
+  paste("AML", 1:9, sep=""),
+  paste("CON", 1:9, sep=""))
+
 ########################### QUALITY CONTROL - COVERAGE ######################
 
 # In order to check for quality in the data, we need to set thresholds for minimum and 
