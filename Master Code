@@ -257,47 +257,155 @@ pca.var.per <- round(pca.var/sum(pca.var)*100, 1)
 
 barplot(pca.var.per, main = "Screen Plot", xlab= "Principal Component", ylab= "Percentage of variation")
 
-#Let's plot the samples along 
+#Let's visualize which genes infuence the first three PCs
 
-colors <- c(rep("red", 9), rep("blue", 9))
-shapes <- c(rep(19,9), rep(17, 9))
-
-plot(promotors_pca$x[,1], promotors_pca$x[,2], type = row.names(promotors_pca), col = colors,  pch = shapes )
-plot(promotors_pca$x[,1], promotors_pca$x[,2], )
-
-
-library(ggplot2)
+loading_scores <- promotors_pca$rotation
+gene_scores <- abs(loading_scores)
 
 
 
-pca.data_12 <- data.frame(Sample=rownames(promotors_pca$x), X=promotors_pca$x[,1], Y=promotors_pca$x[,2] )
+
+PC1gene_scoresranked <- sort(gene_scores[,1], decreasing = TRUE)
+PC2gene_scoresranked <- sort(gene_scores[,2], decreasing = TRUE)
+PC3gene_scoresranked <- sort(gene_scores[,3], decreasing = TRUE)
+  
+gene_scores_ranked <- cbind(PC1gene_scoresranked, PC2gene_scoresranked, PC3gene_scoresranked)
+  
+top_genes <- gene_score_ranked[1:10,]
 
 
-ggplot12 <- ggplot(data=pca.data12, aes(x=X, y=Y, label=Sample)) +
+
+
+
+
+View(top_10_genes)
+
+
+pca$rotation[top_10_genes,1]
+
+#Let's program some functions to plot the samples along the PCs
+
+ggplot.pca.cellTypeShort <- function(i, j, npar=TRUE,print=TRUE){ 
+  
+pca.data <- data.frame(Sample=rownames(promotors_pca$x), X=promotors_pca$x[,i], Y=promotors_pca$x[,j], PatientInfo$cellTypeShort )
+
+ggplot(data=pca.data, aes(x=X, y=Y, label="", group = PatientInfo.cellTypeShort)) +
   geom_text() +
   xlab(paste("PC1 -", pca.var.per[1], "%", sep =""))  +
   ylab(paste("PC2 -", pca.var.per[2], "%", sep =""))  +
   theme_bw()  + 
-  ggtitle("My PCA Graph")
-  
+  ggtitle("My PCA Graph") + 
+ geom_point(aes(shape=PatientInfo.cellTypeShort, color=PatientInfo.cellTypeShort))
 
-ggplot12
-
-ggfun <- function(i, j,npar=TRUE,print=TRUE){
-  
-    pca.data <- data.frame(Sample=rownames(promotors_pca$x), X=promotors_pca$x[,i], Y=promotors_pca$x[,j] )
-    ggplot(data= pca.data, aes(x=X, y=Y, label=Sample)) +
-    geom_text() +
-    xlab(paste("PC",i, " -", pca.var.per[1], "%", sep =""))  +
-    ylab(paste("PC",j, " -", pca.var.per[2], "%", sep =""))  +
-    theme_bw()  + 
-    ggtitle(paste("PCA Graph ", i, j, sep = "_"))
-      
 }
 
-ggfun(1,2)
+ggplot.pca.cellTypeGroup <- function(i, j, npar=TRUE,print=TRUE){ 
+  
+  pca.data <- data.frame(Sample=rownames(promotors_pca$x), X=promotors_pca$x[,i], Y=promotors_pca$x[,j], PatientInfo$cellTypeGroup )
+  
+  ggplot(data=pca.data, aes(x=X, y=Y, label="", group = PatientInfo.cellTypeGroup)) +
+    geom_text() +
+    xlab(paste("PC1 -", pca.var.per[1], "%", sep =""))  +
+    ylab(paste("PC2 -", pca.var.per[2], "%", sep =""))  +
+    theme_bw()  + 
+    ggtitle("My PCA Graph") + 
+    geom_point(aes(shape=PatientInfo.cellTypeGroup, color=PatientInfo.cellTypeGroup))
+  
+}
+
+ggplot.pca.FIRST_SUBMISSION_DATE <- function(i, j, npar=TRUE,print=TRUE){ 
+  
+  pca.data <- data.frame(Sample=rownames(promotors_pca$x), X=promotors_pca$x[,i], Y=promotors_pca$x[,j], PatientInfo$FIRST_SUBMISSION_DATE )
+  
+  ggplot(data=pca.data, aes(x=X, y=Y, label="", group = PatientInfo.FIRST_SUBMISSION_DATE)) +
+    geom_text() +
+    xlab(paste("PC1 -", pca.var.per[1], "%", sep =""))  +
+    ylab(paste("PC2 -", pca.var.per[2], "%", sep =""))  +
+    theme_bw()  + 
+    ggtitle("My PCA Graph") + 
+    geom_point(aes(shape=PatientInfo.FIRST_SUBMISSION_DATE, color=PatientInfo.FIRST_SUBMISSION_DATE))
+  
+}
+
+ggplot.pca.BIOMATERIAL_PROVIDER <- function(i, j, npar=TRUE,print=TRUE){ 
+  
+  pca.data <- data.frame(Sample=rownames(promotors_pca$x), X=promotors_pca$x[,i], Y=promotors_pca$x[,j], PatientInfo$BIOMATERIAL_PROVIDER )
+  
+  ggplot(data=pca.data, aes(x=X, y=Y, label="", group = PatientInfo.BIOMATERIAL_PROVIDER)) +
+    geom_text() +
+    xlab(paste("PC1 -", pca.var.per[1], "%", sep =""))  +
+    ylab(paste("PC2 -", pca.var.per[2], "%", sep =""))  +
+    theme_bw()  + 
+    ggtitle("My PCA Graph") + 
+    geom_point(aes(shape=PatientInfo.BIOMATERIAL_PROVIDER, color=PatientInfo.BIOMATERIAL_PROVIDER))
+  
+}
 
 
+
+#Now let's examine only the control group closely
+
+CON.ggplot.pca.cellTypeShort <- function(i, j, npar=TRUE,print=TRUE){ 
+  
+  pca.data <- data.frame(Sample=rownames(promotors_pca$x[10:18,]), X=promotors_pca$x[10:18,i], Y=promotors_pca$x[10:18,j], PatientInfo[10:18,]$cellTypeShort )
+  
+  ggplot(data=pca.data, aes(x=X, y=Y, label="", group = PatientInfo.10.18....cellTypeShort)) +
+    geom_text() +
+    xlab(paste("PC1 -", pca.var.per[1], "%", sep =""))  +
+    ylab(paste("PC2 -", pca.var.per[2], "%", sep =""))  +
+    theme_bw()  + 
+    ggtitle("My PCA Graph") + 
+    geom_point(aes(shape=PatientInfo.10.18....cellTypeShort, color=PatientInfo.10.18....cellTypeShort))
+  
+}
+
+CON.ggplot.pca.cellTypeGroup <- function(i, j, npar=TRUE,print=TRUE){ 
+  
+  pca.data <- data.frame(Sample=rownames(promotors_pca$x[10:18,]), X=promotors_pca$x[10:18,i], Y=promotors_pca$x[10:18,j], PatientInfo[10:18,]$cellTypeGroup)
+  
+  ggplot(data=pca.data, aes(x=X, y=Y, label="", group = PatientInfo.10.18....cellTypeGroup)) +
+    geom_text() +
+    xlab(paste("PC1 -", pca.var.per[1], "%", sep =""))  +
+    ylab(paste("PC2 -", pca.var.per[2], "%", sep =""))  +
+    theme_bw()  + 
+    ggtitle("My PCA Graph") + 
+    geom_point(aes(shape=PatientInfo.10.18....cellTypeGroup, color=PatientInfo.10.18....cellTypeGroup))
+  
+}
+
+CON.ggplot.pca.FIRST_SUBMISSION_DATE <- function(i, j, npar=TRUE,print=TRUE){ 
+  
+  pca.data <- data.frame(Sample=rownames(promotors_pca$x[10:18,]), X=promotors_pca$x[10:18,i], Y=promotors_pca$x[10:18,j], PatientInfo[10:18,]$FIRST_SUBMISSION_DATE )
+  
+  ggplot(data=pca.data, aes(x=X, y=Y, label="", group = PatientInfo.10.18....FIRST_SUBMISSION_DATE)) +
+    geom_text() +
+    xlab(paste("PC1 -", pca.var.per[1], "%", sep =""))  +
+    ylab(paste("PC2 -", pca.var.per[2], "%", sep =""))  +
+    theme_bw()  + 
+    ggtitle("My PCA Graph") + 
+    geom_point(aes(shape=PatientInfo.10.18....FIRST_SUBMISSION_DATE, color=PatientInfo.10.18....FIRST_SUBMISSION_DATE))
+  
+}
+
+CON.ggplot.pca.BIOMATERIAL_PROVIDER <- function(i, j, npar=TRUE,print=TRUE){ 
+  
+  pca.data <- data.frame(Sample=rownames(promotors_pca$x[10:18,]), X=promotors_pca$x[10:18,i], Y=promotors_pca$x[10:18,j], PatientInfo[10:18,]$BIOMATERIAL_PROVIDER )
+  
+  ggplot(data=pca.data, aes(x=X, y=Y, label="", group = PatientInfo.10.18....BIOMATERIAL_PROVIDER)) +
+    geom_text() +
+    xlab(paste("PC1 -", pca.var.per[1], "%", sep =""))  +
+    ylab(paste("PC2 -", pca.var.per[2], "%", sep =""))  +
+    theme_bw()  + 
+    ggtitle("My PCA Graph") + 
+    geom_point(aes(shape=PatientInfo.10.18....BIOMATERIAL_PROVIDER, color=PatientInfo.10.18....BIOMATERIAL_PROVIDER))
+}
+
+
+
+#PC3 seems to contain three Batch Effects: 
+#It separates AML patients between Prof: Lucia Altucci and Prof.dr. E. Vellengaas as Biomaterial providers
+#It separates AML patients between 9-10 of April and 9 of July as First Submission Date
+#It separates CON patients between Neut_myel and	Neut_meta/Neut_band as cell type 
 
 
 
