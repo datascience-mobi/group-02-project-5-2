@@ -10,6 +10,12 @@ coverage <- promoters_only[, c(19:36)]
 cover_nox <- coverage[-which(promoters$Chromosome == "chrX"), ]
 cover_noxy <- cover_nox[-which(promoters$Chromosome == "chrY"), ]
 rm(coverage, cover_nox)
+beta_nox <- beta[-which(promoters$Chromosome == "chrX"), ]
+beta_noxy <- beta_nox[-which(promoters$Chromosome == "chrY"), ]
+rm(beta, beta_nox)
+
+print( (nrow(beta_noxy)*100) / nrow(promoters) )
+
 
 coverage_tot_mean <- rowMeans(cover_noxy) 
 log_coverage_mean <- log10(cover_tot_mean)
@@ -86,12 +92,40 @@ sum(NAs_given)
 
 percent_of_NAs_given <- sum(NAs_given)/(nrow(promoters_only)*18)
 
-###########################################################################
+##################################################################################
 
 # On a second thought, it would be more meaningful to check how many GENES
 # we lose depending on where we set the threshold
 
+############### LOWER THRESHOLD 
+
+# (Ziller, M. J., Hansen, K. D., Meissner, A., & Aryee, M. J. (2015)).
+# Coverage recommendations for methylation analysis by whole-genome bisulfite sequencing.
+# Nature methods, 12(3), 230.)
+ 
+
+lower_threshold <- 15
+
+beta_low_trimmed <- beta_noxy
+for (j in 1:ncol(beta_low_trimmed)) {
+  for (i in 1:nrow(beta_low_trimmed)) {
+    if (cover_noxy[i, j] < lower_threshold) {
+      beta_low_trimmed[i, j] <- NA
+    }
+  }
+}
+
+beta_low_NA_rm <- beta_low_trimmed[-which(rowSums(is.na(beta_low_trimmed)) > 2), ]
+which(rowSums(is.na(beta_low_NA_rm)) > 2) ## RESULT = 0
+
+print( (nrow(beta_low_NA_rm)*100) / nrow(beta_noxy))
+print( (nrow(beta_low_NA_rm)*100) / nrow(promoters_only)) ##RESULT=91.02
+
+############### UPPER THRESHOLD 
+
 #USING FOR LOOPS
+
+coverage_histo <- unlist(cover_noxy) #This allows to inspect the whole dataframe freely
 
 rows_lost <- c()
 rows_lost_tot <- c(0)
@@ -135,3 +169,11 @@ plot(x=thresholds_2NAs[2:21], y=rows_lost_tot[2:21], type="b")
 #Percentage of information lost, better visualization without last value
 rows_lost_per <- (rows_lost_tot*100) / nrow(cover_noxy)
 plot(x=thresholds_2NAs[c(2:21)], y=rows_lost_per[c(2:21)], type="b") 
+abline(h=6, lty=2)
+
+#UP until the removal of coverage values below 30, we've lost 10% of the information.
+#Accordingly, the upper threshold should be chosen so that no more than 15% of the information (rows)
+#get lost.
+
+##  If we follow that, the upper threshold would be the 99.5% quantile, in which we would lose 4.56% of the information,
+# leaving us with 86.5%
