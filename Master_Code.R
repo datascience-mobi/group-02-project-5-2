@@ -13,9 +13,12 @@ coverage<- promoters_only[,c(19:36)]
 PatientInfo <- annotation[,c(3,4,11,29)]
 rownames(PatientInfo) <- c(
   paste("AML", 1:9, sep=""),
-  paste("CON", 1:9, sep=""))
+  paste("CON", 1:9, sep="")
+)
 
-########################### QUALITY CONTROL - COVERAGE ######################
+
+
+########################### DATA VISUALIZATION ######################
 
 # In order to check for quality in the data, we need to set thresholds for minimum and 
 # maximum coverage values. Too little coverage means unreliable beta values, whereas
@@ -40,22 +43,18 @@ quantile(coverage_tot_mean, probs=.05)
 quantile(coverage_tot_mean, probs=.95)
 #Result: 5620 
 
+
+########################### QUALITY CONTROL #############################
+
 # Chromosomes X & Y have to be removed from the analysis
 cover_nox <- coverage[-which(promoters$Chromosome == "chrX"), ]
 cover_noxy <- cover_nox[-which(promoters$Chromosome == "chrY"), ]
 rm(coverage, cover_nox)
+beta_nox <- beta[-which(promoters$Chromosome == "chrX"), ]
+beta_noxy <- beta_nox[-which(promoters$Chromosome == "chrY"), ]
+rm(beta, beta_nox)
 
-cover_tot_mean <- rowMeans(cover_noxy) 
-log_cover_mean <- log10(cover_tot_mean)
-
-par(mfrow=c(1,2))
-hist(log_coverage_mean, breaks = 200, xlim = c(0,5.5), main="With XY chr")
-abline(v=quantile(log_coverage_mean, probs = c(seq(0.1, 1.0, by= 0.1))), col="red")
-abline(v=quantile(log_coverage_mean, probs = c(0.05, 0.95), col="cyan"), lty=2)
-hist(log_cover_mean, breaks = 200, xlim = c(0,5.5), main = "WhithOUT XY chr")
-abline(v=quantile(log_cover_mean, probs = c(seq(0.1, 1.0, by= 0.1))), col="red")
-abline(v=quantile(log_cover_mean, probs = c(0.05, 0.95), col="cyan"), lty=2)
-#Looks fairly similar to the previous one 
+print( (nrow(beta_noxy)*100) / nrow(promoters) ) ##RESULT = 95.93893%
 
 
 ################################  UPPER threshold  ########################################
@@ -64,16 +63,10 @@ abline(v=quantile(log_cover_mean, probs = c(0.05, 0.95), col="cyan"), lty=2)
 # how many values we lose depending on where we set the threshold
 
 coverage_histo <- unlist(cover_noxy) #This allows to inspect the whole dataframe freely
-log_cover_histo <- unlist(log10(cover_noxy))
-quantile(coverage_histo, probs=c(.75, .95, 1))
-
-
-## UPPER THRESHOLD -- 95% quantile (5,888) to 100% (229,153)
 
 NAs_up <- c()
 thresholds_up <- c()
-for(i in 0:1145){
-  threshold <- 229153-i*200
+for (threshold in seq(0, max(coverage_histo), by = 200)) {
   thresholds_up <- append(thresholds_up, threshold)
   Unreliable <- coverage_histo[which(coverage_histo > threshold)]
   N_Unreliable <- length(Unreliable)
@@ -81,97 +74,169 @@ for(i in 0:1145){
 }
 
 length(NAs_up)
-length(thresholds_up) #Checking if both have the same length
+length(thresholds_up) #Checking if both have the same length so that they can be plotted
 
 # Let's try making the x axis log10 to stretch the right part
 
-par(mfrow=c(1,1))
-plot(x=log10(thresholds_up), y=NAs_up, type= "l", main = "Unreliable Data by threshold", xlab= "threshold position", ylab = "Unreliable Data")
-abline(v=quantile(log_coverage_mean, probs = c(seq(0.95, 1.0, by= 0.01))), col="green")
-abline(v=quantile(log_coverage_mean, probs = 0.995), col="orange")
-abline(v=quantile(coverage_tot_mean, probs = c(seq(0, 1.0, by= 0.1))), col="green")
+par(mfrow = c(1, 1))
+plot(
+  x = log10(thresholds_up),
+  y = NAs_up,
+  type = "l",
+  main = "Amount of Beta values converted to NA by threshold",
+  xlab = "threshold position",
+  ylab = "Unreliable Values"
+)
+abline(v = quantile(log_coverage_mean, probs = c(seq(0.95, 1.0, by = 0.01))), 
+       col = "green"
+)
+abline(
+  v = quantile(log_coverage_mean, probs = c(seq(0, 1.0, by = 0.1))),
+  col = "red",  lty = 3
+)
 
-# Let's assume the 95% quantile as our upper threshold
+# PROBLEM: we are not taking into account the amount of NAs that were already in the Beta values as NaN
 
-quantile(coverage_histo, probs=.95) # RESULT = 5.888
+beta_NaN <- promoters_only[which(promoters_only[,c(1:18)]== "NaN"),] #Select the genes that have at least 1 NaN
 
-################################  LOWER threshold  ########################################
+colorder <- c() 
+for(i in 1:18){
+  colorder <- append(colorder, i)
+  k <- i+18
+  colorder <- append(colorder, k)
+}
+#This little for loop generates the vector of order that will sort the data frame putting the 
+#beta value next to the coverage value of each sample instead of all betas and then all coverages
+beta_NaN_table <- beta_NaN[, colorder] #Now the data frame has the beta values next to the coverage
+#We observe that NaN values correspond to a coverage of 0.
+
+is.na(beta_NaN_table[c(1:20), 1])
+sum(is.na(beta_NaN_table[c(1:20), 1])) #NaN are treated as NAs by the is.na function
+
+NAs_given <- c()
+for(i in 1:18){
+  NAs_given <- append( NAs_given, sum( is.na (promoters_only[, i]) ) )  
+  
+}
+sum(NAs_given)
+
+percent_of_NAs_given <- sum(NAs_given)/(nrow(promoters_only)*18)
+
+##################################################################################
+
+# On a second thought, it would be more meaningful to check how many 
+# ROWS (=promotors) we lose depending on where we set the threshold
+
+############### LOWER THRESHOLD 
+
+# (Ziller, M. J., Hansen, K. D., Meissner, A., & Aryee, M. J. (2015)).
+# Coverage recommendations for methylation analysis by whole-genome bisulfite sequencing.
+# Nature methods, 12(3), 230.)
 
 
-NAs_low <- c()
-thresholds_low <- c()
-for(i in 1:35){
-  threshold <- i
-  thresholds_low <- append(thresholds_low, threshold)
-  Unreliable <- coverage_histo[which(coverage_histo < threshold)]
-  N_Unreliable <- length(Unreliable)
-  NAs_low <- append(NAs_low, N_Unreliable)
+lower_threshold <- 30
+
+beta_low_trimmed <- beta_noxy
+for (j in 1:ncol(beta_low_trimmed)) {
+  for (i in 1:nrow(beta_low_trimmed)) {
+    if (cover_noxy[i, j] < lower_threshold) {
+      beta_low_trimmed[i, j] <- NA
+    }
+  }
 }
 
+beta_low_NA_rm <- beta_low_trimmed[-which(rowSums(is.na(beta_low_trimmed)) > 2), ]
+which(rowSums(is.na(beta_low_NA_rm)) > 2) ## RESULT = 0
 
-length(NAs_low)
-length(thresholds_low)
+print( (nrow(beta_low_NA_rm)*100) / nrow(beta_noxy))
+print( (nrow(beta_low_NA_rm)*100) / nrow(promoters_only)) ##RESULT=91.02
 
-par(mfrow=c(1,1))
-plot( x=thresholds_low, y=NAs_low, type= "l", main = "Unreliable Data by threshold", 
-      xlab= "threshold position", ylab = "Unreliable Data")
-abline(v=quantile( coverage_histo, probs = c(.01, .02, .03, .04) ), 
-       col=c("blue","red", "orange", "green") )
+############### UPPER THRESHOLD 
 
-# Distribution doesn't show any "kink"; Literature recommends a minimum coverage of 30x
-# (Ziller, M. J., Hansen, K. D., Meissner, A., & Aryee, M. J. (2015). 
-# Coverage recommendations for methylation analysis by whole-genome bisulfite sequencing. 
-# Nature methods, 12(3), 230.)
+coverage_histo <- unlist(cover_noxy) #This allows to inspect the whole dataframe freely
+
+rows_lost <- c()
+rows_lost_tot <- c(0)
+thresholds_2NAs <- c()
+df <- cover_noxy
+for(threshold in quantile(coverage_histo, probs=seq(1, 0.9, by=-0.005))){
+  rows_lost <- c()
+  for(i in 1:nrow(df) ){
+    
+    AML_position_above_limit <- which(df[i,c(1:9)] > threshold) #Gives the position of the AML values above threshold
+    CON_position_above_limit <- which(df[i,c(10:18)] > threshold) #Same as above but with control samples
+    
+    if( length(AML_position_above_limit > 2) | length(CON_position_above_limit > 2) ) {
+      
+      rows_lost <- append(rows_lost, i)
+    }
+  }
+  
+  rows_lost_tot <- append( rows_lost_tot, ( rows_lost_tot[length(rows_lost_tot)] + length(rows_lost) ) )
+  thresholds_2NAs <- append(thresholds_2NAs, threshold)
+  print(rows_lost_tot)
+  print(thresholds_2NAs)
+  if(length(rows_lost) > 0){
+    df <- df[-rows_lost,]
+  }
+  print(nrow(df))
+}
+rows_lost_tot <- rows_lost_tot[-1]
+
+#Rows lost vs threshold
+plot(x=thresholds_2NAs, y=rows_lost_tot, type="b") 
+
+#Percentage of information lost
+rows_lost_per <- (rows_lost_tot*100) / nrow(cover_noxy)
+plot(x=thresholds_2NAs, y=rows_lost_per, type="b") 
+
+
+#Rows lost vs threshold, better visualization without last value
+plot(x=thresholds_2NAs[2:21], y=rows_lost_tot[2:21], type="b")
+
+#Percentage of information lost, better visualization without last value
+rows_lost_per <- (rows_lost_tot*100) / nrow(cover_noxy)
+plot(x=thresholds_2NAs[c(2:21)], y=rows_lost_per[c(2:21)], type="b") 
+abline(h=6, lty=2)
+
+#UP until the removal of coverage values below 30, we've lost 10% of the information.
+#Accordingly, the upper threshold should be chosen so that no more than 15% of the information (rows)
+#get lost.
+
+##  If we follow that, the upper threshold would be the 99.5% quantile, in which we would lose 4.56% of the information,
+# leaving us with 86.5%
 
 ################################  APPLYING THRESHOLDS TO BETA VALUES  ########################################
 # Now that we've decided where to set our coverage thresholds, every beta value whose
 # coverage is either too low or too high shall be converted to NA
 
 lower_threshold <- 30
-upper_threshold <- 5888
+upper_threshold <- quantile(coverage_histo, probs=0.995)
 
-promoters_qc <- promoters_only
-for(j in 19:36){
-  for(i in 1:nrow(promoters_only)) {
-    if(promoters_qc [i,j]  < lower_threshold | promoters_qc [i,j] > upper_threshold){
-      promoters_qc [i,j-18] <- NA
+beta_trimmed <- beta_noxy
+for (j in 1:ncol(beta_trimmed)) {
+  for (i in 1:nrow(beta_trimmed)) {
+    if (cover_noxy[i, j] < lower_threshold |
+        cover_noxy[i, j] > upper_threshold) {
+      beta_trimmed[i, j] <- NA
     }
   }
 }
-View(promoters_qc)
+View(beta_trimmed)
 
-lower_threshold <- 30
-upper_threshold <- 5888
-
-
-promoters <- data$promoters[,-c(1:10)]
-
-
-# Setting unreliable data to NA
-
-promoters_qc <- promoters
-for(j in 19:36){
-  for(i in 1:nrow(promoters)) {
-    if(promoters_qc [i,j]  < lower_threshold | promoters_qc [i,j] > upper_threshold){
-      promoters_qc [i,j-18] <- NA
-    }
-  }
-}
-
-View(promoters_qc)
 
 # Removing genes that have more than 2 NAs in individual cohorts
-beta_can <- promoters_qc[,c(1:9)]
-beta_con <- promoters_qc[,c(10:18)]
+beta_AML <- beta_trimmed[,c(1:9)]
+beta_con <- beta_trimmed[,c(10:18)]
 
-NAs_can <- rowSums(is.na(beta_can))
+NAs_AML <- rowSums(is.na(beta_AML))
 NAs_con <- rowSums(is.na(beta_con))
 
-Can <- cbind(beta_can, NAs_can)
-Con <- cbind(beta_con, NAs_con)
+AML <- cbind(beta_AML, NAs_AML)
+con <- cbind(beta_con, NAs_con)
 
-beta <- cbind(Can,Con)
-beta_partly_cleaned <- beta[-which(beta[,10]> 2 |beta[,20] >2),]
+beta_qc <- cbind(AML, con)
+beta_partly_cleaned <- beta_qc[-which(beta_qc[, 10] > 2 | beta_qc[, 20] > 2), ]
 
 # Replacing NAs with the mean value of the cohort
 
@@ -185,37 +250,41 @@ for (i in 1:nrow(beta_partly_cleaned)) {
       }
     }
   }
-}
-
-beta_can_cleaned <- beta_partly_cleaned
-
-for (i in 1:nrow(beta_can_cleaned)) {
-  n <- beta_can_cleaned[i,20]
+  
+  n <- beta_partly_cleaned[i,20]
   
   if (n==1 | n==2) {
     for (j in 11:19){
-      if (is.na(beta_can_cleaned[i,j])){
-        beta_can_cleaned[i,j] <- rowMeans(beta_can_cleaned[i,11:19], na.rm = T)
+      if (is.na(beta_partly_cleaned[i,j])){
+        beta_partly_cleaned[i,j] <- rowMeans(beta_partly_cleaned[i,11:19], na.rm = T)
       }
     }
   }
 }
-beta_ <- beta_can_cleaned[,-c(10,20)]
+
+beta_both_clean <- beta_partly_cleaned[,-c(10,20)]
+
 
 ### Data Normalization 
 
 for (j in 1:18) {
-  for (i in 1:nrow(beta_)) {
-    beta_[[i,j]] <- log2(beta_[i,j] / (1-beta_[i,j]) )
+  for (i in 1:nrow(beta_both_clean)) {
+    beta_both_clean[[i,j]] <- log2(beta_both_clean[i,j] / (1-beta_both_clean[i,j]) )
     
   }
 }
 
-promotors_normalized <- beta_
+promotors_normalized <- beta_both_clean
 
 View(promotors_normalized)
 
-#PCA
+write.table(promotors_normalized, file="promoters_normalized.csv",sep=",",row.names=T) #Export table
+promoters_norm <- read.csv(file="promoters_normalized.csv")
+
+
+
+
+###################################### PCA #####################################
 
 #The data must be turned into a matrx to use the fucntion prcomp (Principal components)
 
@@ -235,7 +304,8 @@ promotors_matrix_noInf[which(promotors_matrix_noInf == -Inf)] <- -20
 
 colnames(promotors_matrix_noInf) <- c(
   paste("AML", 1:9, sep=""),
-  paste("CON", 1:9, sep=""))
+  paste("CON", 1:9, sep="")
+)
  
 View(promotors_matrix_noInf)
 
@@ -260,7 +330,7 @@ View(promotors_pca$rotation)
 pca.var <- promotors_pca$sdev^2
 pca.var.per <- round(pca.var/sum(pca.var)*100, 1)
 
-plot(pca.var.per, x = c(1 :length(pca.var.per)), type = "l", main = "Screen Plot",  xlab= "Principal Component", ylab= "Percentage of variation" )
+plot(pca.var.per, x = c(1 :length(pca.var.per)), type = "b", main = "Scree Plot",  xlab= "Principal Component", ylab= "Percentage of variation" )
 
 #The first three PCs explain most of the variation within the data
 
@@ -366,14 +436,3 @@ ggplot.pca.DONOR_SEX(1,3)
 
 #PC3 strongly separates AML patients at two extremes while still preserving the control group. The two groups are characterised 
 #by two different Biomaterial providers, except for one patient.
-
-
-
-
-
-
-
-
-
-    
- 
