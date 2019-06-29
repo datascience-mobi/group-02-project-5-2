@@ -436,3 +436,40 @@ ggplot.pca.DONOR_SEX(1,3)
 
 #PC3 strongly separates AML patients at two extremes while still preserving the control group. The two groups are characterised 
 #by two different Biomaterial providers, except for one patient.
+
+############# Logistic regression ##################
+
+Health_Vector <- as.factor(sample_annotation$cellTypeGroup[-3])
+
+Mvalues <- as.data.frame(t(GOI_FeatureSelection)[,1:10000])
+
+Log_Regr_Data <- cbind(Mvalues,Health_Vector )
+
+
+model <- glm(formula = Health_Vector~.,family = binomial(link = "logit"), data = Log_Regr_Data)
+predict <- predict(model, newdata = Log_Regr_Data, type = "response")
+
+#cross validation 
+
+control = which(Log_Regr_Data$Health_Vector == "gran")
+
+control_train = sample(control,floor(0.85*length(control)))
+
+cancer = which(Log_Regr_Data$Health_Vector == "cancer")
+
+cancer_train = sample(cancer,floor(0.85*length(cancer)))
+
+train = c(control_train, cancer_train)
+
+train_set <- Log_Regr_Data[train,] 
+
+test_set <- Log_Regr_Data[-train,] 
+
+model_2 <- glm(formula = Health_Vector~.,family = binomial(link = "logit"), data = train_set)
+predict_2 <- predict(model_2, newdata =test_set , type = "response")
+
+
+View(predict_2)  
+
+
+
