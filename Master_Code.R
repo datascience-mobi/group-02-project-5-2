@@ -702,8 +702,10 @@ while (Fail_reject == 0) {
 
 View(Fail_reject) #At 133 the p value start become unreliable
 
-Reliable_Ttest_results <- Ttest_results_rankedPValue[1:132,]
-Reliable_Ttest_results <- Ttest_results_rankedPValue[1:20,]
+Reliable_Ttest_results_p <- Ttest_results_rankedPValue[1:132,]
+Reliable_Ttest_results_fold <- Reliable_Ttest_results_p[order(Reliable_Ttest_results_p$mean_difference),]
+
+
 
 #Manhattan plot
 
@@ -732,9 +734,12 @@ manhattan(df, chr="chr", bp="bp", p="p", suggestiveline = F, genomewideline = -l
 
 #We'll pick the top 20 genes
 
-Selected_Genes <- promotersQC[rownames(Reliable_Ttest_results[1:20,]),]
+Selected_promoters_p <- promotersQC[rownames(Reliable_Ttest_results_p[1:20,]),]
+Selected_promoters_fold <- promotersQC[rownames(Reliable_Ttest_results_fold[1:20,]),]
 
-View(Selected_Genes)
+View(Selected_promoters_p)
+View(Selected_promoters_fold)
+
 
 
 
