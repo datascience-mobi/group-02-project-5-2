@@ -442,10 +442,9 @@ rownames(statistics) <- c("cellType","Disease","Biomaterial-provider","Donor-ID"
 
 library(gplots)
 
-my_palette <- colorRampPalette(c("red", "yellow"))(n = 3)
-col_breaks <- c(seq(0,0.01,length=2),  
-                seq(0.0105, 1,length=2)
-) 
+my_palette <- colorRampPalette(c("firebrick2","darkorange","lemonchiffon"))(n = 3)
+col_breaks <- c(0,0.01,0.05,1)
+
 
 png("./heatmap_pvalues9.png",    # create PNG for the heat map        
     width = 5*300,        # 5 x 300 pixels
@@ -463,40 +462,17 @@ heatmap.2(heatmap,
           col=my_palette,
           breaks=col_breaks,
           dendrogram = "none" ,
-          Colv = "NA"
+          Colv = "NA",
+          cellnote = round(heatmap,digits = 3),
+          notecol = "black"
 )
 
 dev.off()
 
-my_palette <- colorRampPalette(c("red", "yellow"))(n = 3)
-col_breaks <- c(seq(0,0.05,length=2),  
-                seq(0.0505, 1,length=2)
-) 
 
-png("./heatmap_pvalues10.png",    # create PNG for the heat map        
-    width = 5*300,        # 5 x 300 pixels
-    height = 5*300,
-    res = 300,            # 300 pixels per inch
-    pointsize = 8)
-
-par(mar=c(1,1,1,1))
-heatmap.2(heatmap, 
-          main = "Significance of effects on data",
-          density.info="none",
-          trace="none",
-          lwid= c(2,5),
-          margins =c(6,10),
-          col=my_palette,
-          breaks=col_breaks,
-          dendrogram = "none" ,
-          Colv = "NA"
-)
-
-dev.off()
-
-my_palette <- colorRampPalette(c("red", "yellow"))(n = 3)
-col_breaks <- c(seq(0,0.05,length=2),  
-                seq(0.0505, 1,length=2)
+  
+my_palette <- colorRampPalette(c("steelblue1", "slategray1"))(n = 2)
+col_breaks <- c(0,0.05,1)
 ) 
 
 png("./heatmap_statistics2.png",    # create PNG for the heat map        
@@ -515,7 +491,9 @@ heatmap.2(statistics,
           col=my_palette,
           breaks=col_breaks,
           dendrogram = "none" ,
-          Colv = "NA"
+          Colv = "NA",
+          cellnote = round(statistics,digits = 3),
+          notecol = "black"
 )
 
 dev.off()
